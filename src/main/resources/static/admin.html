@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Admin Dashboard</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body{
+margin:0;
+font-family:Segoe UI,Arial;
+background:#f0fdf4;
+}
+
+.main{
+display:flex;
+height:100vh;
+}
+
+.sidebar{
+width:230px;
+background:#166534;
+padding:20px;
+color:white;
+}
+
+.sidebar button{
+display:block;
+width:100%;
+padding:10px;
+margin-bottom:10px;
+border:none;
+border-radius:6px;
+background:#16a34a;
+color:white;
+cursor:pointer;
+}
+
+.sidebar button:hover{
+background:#15803d;
+}
+
+.content{
+flex:1;
+padding:30px;
+overflow:auto;
+}
+
+.container{
+max-width:500px;
+background:white;
+padding:25px;
+border-radius:12px;
+box-shadow:0 4px 10px rgba(0,0,0,0.1);
+}
+
+.stat-box{
+flex:1;
+background:white;
+padding:15px;
+border-radius:10px;
+text-align:center;
+font-weight:bold;
+border:1px solid #d1d5db;
+}
+
+input,select,textarea{
+width:100%;
+padding:12px;
+margin:10px 0;
+border-radius:8px;
+border:1px solid #d1d5db;
+}
+
+table{
+width:100%;
+border-collapse:collapse;
+margin-top:20px;
+background:white;
+}
+
+th{
+background:#16a34a;
+color:white;
+padding:10px;
+}
+
+td{
+border:1px solid #ccc;
+padding:10px;
+text-align:center;
+}
+
+.section{
+display:none;
+}
+</style>
+
+</head>
+
+<body>
+
+<div class="main">
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+<h2>⚡ Admin</h2>
+
+<button onclick="showSection('dashboard')">Dashboard</button>
+<button onclick="openAnalytics()">Analytics</button>
+<button onclick="showSection('tasks')">Assign Tasks</button>
+<button onclick="logout()">Logout</button>
+</div>
+
+<div class="content">
+
+<!-- DASHBOARD -->
+<div id="dashboard" class="section">
+<h2>Create Alert</h2>
+
+<div class="container">
+
+<input id="title" placeholder="Title">
+
+<select id="disasterType" onchange="autoTitle()">
+<option>Flood</option>
+<option>Earthquake</option>
+<option>Cyclone</option>
+<option>Fire</option>
+</select>
+
+<input id="location" placeholder="Location">
+<input id="latitude" type="number" placeholder="Latitude">
+<input id="longitude" type="number" placeholder="Longitude">
+<input id="reportedTime" type="datetime-local">
+
+<select id="severity">
+<option>LOW</option>
+<option>MEDIUM</option>
+<option>HIGH</option>
+</select>
+
+<textarea id="message" placeholder="Description"></textarea>
+
+<button onclick="createAlert()">Create Alert</button>
+
+</div>
+</div>
+
+<!-- ANALYTICS -->
+<div id="analytics" class="section">
+
+<h2>📊 Analytics</h2>
+
+<div style="display:flex; gap:15px; flex-wrap:wrap;">
+<div class="stat-box">Total<br><span id="a_total">0</span></div>
+<div class="stat-box">Pending<br><span id="a_pending">0</span></div>
+<div class="stat-box">In Progress<br><span id="a_progress">0</span></div>
+<div class="stat-box">Completed<br><span id="a_completed">0</span></div>
+</div>
+
+<div style="display:flex; gap:30px; justify-content:center; margin-top:20px;">
+<canvas id="pieChart"></canvas>
+<canvas id="barChart"></canvas>
+</div>
+
+</div>
+
+<!-- TASKS -->
+<div id="tasks" class="section">
+
+<h2>🛠 Assign Tasks</h2>
+
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Location</th>
+<th>Description</th>
+<th>Status</th>
+<th>Report</th>
+<th>Assign</th>
+</tr>
+</thead>
+<tbody id="taskBody"></tbody>
+</table>
+
+</div>
+
+</div>
+</div>
+
+<script>
+
+/* ================= GLOBAL ================= */
+let responders = [];
+
+/* ================= AUTH ================= */
+const token = localStorage.getItem("token");
+const role = localStorage.getItem("role");
+
+if(!token || role !== "ADMIN"){
+alert("Access Denied");
+window.location.href="login.html";
+}
+
+/* ================= SECTION SWITCH ================= */
+async function showSection(section){
+
+document.querySelectorAll(".section").forEach(s=>s.style.display="none");
+document.getElementById(section).style.display="block";
+
+if(section==="tasks"){
+    await loadResponders();   // ✅ wait responders
+    loadTasks();              // ✅ then load tasks
+}
+
+if(section==="analytics") loadAnalytics();
+}
+
+/* ================= CREATE ALERT ================= */
+function createAlert(){
+
+let data = {
+title: title.value,
+type: disasterType.value,
+location: location.value,
+severity: severity.value,
+description: message.value,
+latitude: parseFloat(latitude.value),
+longitude: parseFloat(longitude.value),
+reportedTime: reportedTime.value,
+status:"ACTIVE"
+};
+
+fetch("http://localhost:9595/api/disasters",{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify(data)
+})
+.then(()=>alert("✅ Alert Created"));
+}
+
+/* ================= LOAD RESPONDERS ================= */
+function loadResponders(){
+
+return fetch("http://localhost:9595/api/responders",{
+headers:{
+"Authorization":"Bearer "+token
+}
+})
+.then(res=>{
+if(!res.ok) throw new Error();
+return res.json();
+})
+.then(data=>{
+responders = data || [];
+})
+.catch(()=>{
+alert("❌ Failed to load responders");
+});
+
+}
+
+/* ================= LOAD TASKS ================= */
+function loadTasks(){
+
+fetch("http://localhost:9595/api/tasks",{
+headers:{"Authorization":"Bearer "+token}
+})
+.then(res=>{
+if(res.status === 403){
+alert("❌ Unauthorized (Token issue)");
+return [];
+}
+if(!res.ok) throw new Error();
+return res.json();
+})
+.then(data=>{
+
+let table = document.getElementById("taskBody");
+table.innerHTML="";
+
+if(!data || data.length===0){
+table.innerHTML="<tr><td colspan='6'>No Tasks</td></tr>";
+return;
+}
+
+data.forEach(t=>{
+
+    let statusColor =
+    t.status === "COMPLETED" ? "green" :
+    t.status === "IN_PROGRESS" ? "orange" : "gray";
+
+    /* ✅ DROPDOWN OPTIONS */
+    let options = `<option value="">Select</option>`;
+    responders.forEach(r=>{
+        options += `<option value="${r.id}">${r.name}</option>`;
+    });
+
+    table.innerHTML+=`
+    <tr>
+        <td>${t.id}</td>
+        <td>${t.location}</td>
+        <td>${t.description}</td>
+
+        <td style="color:${statusColor}; font-weight:bold;">
+            ${t.status}
+        </td>
+
+        <!-- ✅ REPORT -->
+        <td>
+        ${t.report 
+        ? `<button onclick="viewReport('${t.report}')">📄 View</button>` 
+        : "No Report"}
+        </td>
+
+        <!-- ✅ ASSIGN DROPDOWN -->
+        <td>
+        <select id="r${t.id}">
+            ${options}
+        </select>
+        <br><br>
+        <button onclick="assignTask(${t.id})">Assign</button>
+        </td>
+
+    </tr>
+    `;
+});
+
+})
+.catch(()=>{
+alert("❌ Failed to load tasks");
+});
+
+}
+
+/* ================= ASSIGN TASK ================= */
+function assignTask(id){
+
+let r = document.getElementById("r"+id).value;
+
+if(!r){
+alert("Select responder");
+return;
+}
+
+fetch(`http://localhost:9595/api/tasks/assign/${id}/${r}`,{
+method:"PUT",
+headers:{"Authorization":"Bearer "+token}
+})
+.then(res=>{
+if(!res.ok) throw new Error();
+alert("✅ Assigned Successfully");
+loadTasks();
+})
+.catch(()=>{
+alert("❌ Assign failed");
+});
+
+}
+
+/* ================= VIEW REPORT ================= */
+function viewReport(report){
+alert("📄 Report:\n\n" + report);
+}
+
+/* ================= ANALYTICS ================= */
+let pie,bar;
+
+function loadAnalytics(){
+
+fetch("http://localhost:9595/api/analytics",{
+headers:{"Authorization":"Bearer "+token}
+})
+.then(res=>res.json())
+.then(d=>{
+
+a_total.innerText=d.total;
+a_pending.innerText=d.pending;
+a_progress.innerText=d.progress;
+a_completed.innerText=d.completed;
+
+if(pie) pie.destroy();
+pie=new Chart(pieChart,{
+type:"pie",
+data:{
+labels:["Pending","In Progress","Completed"],
+datasets:[{data:[d.pending,d.progress,d.completed],
+backgroundColor:["orange","blue","green"]}]
+}
+});
+
+if(bar) bar.destroy();
+bar=new Chart(barChart,{
+type:"bar",
+data:{
+labels:["Pending","In Progress","Completed"],
+datasets:[{data:[d.pending,d.progress,d.completed],
+backgroundColor:["orange","blue","green"]}]
+}
+});
+
+});
+
+}
+
+/* ================= LOGOUT ================= */
+function logout(){
+localStorage.clear();
+window.location.href="login.html";
+}
+
+function openAnalytics(){
+window.location.href="admin_dashboard_stats.html";
+}
+
+/* ================= AUTO TITLE ================= */
+function autoTitle(){
+title.value = disasterType.value + " Alert";
+}
+
+/* ================= DEFAULT ================= */
+showSection("dashboard");
+
+</script>
+
+</body>
+</html>

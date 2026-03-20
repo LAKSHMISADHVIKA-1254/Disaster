@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Responder Dashboard</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body{
+margin:0;
+font-family:Segoe UI,Arial;
+background:#f0fdf4;
+}
+
+.main{
+display:flex;
+height:100vh;
+}
+
+.sidebar{
+width:230px;
+background:#166534;
+padding:20px;
+color:white;
+}
+
+.sidebar button{
+display:block;
+width:100%;
+padding:10px;
+margin-bottom:10px;
+border:none;
+border-radius:6px;
+background:#16a34a;
+color:white;
+cursor:pointer;
+}
+
+.sidebar button:hover{
+background:#15803d;
+}
+
+.content{
+flex:1;
+padding:40px;
+overflow:auto;
+}
+
+.stat-box{
+flex:1;
+background:white;
+padding:15px;
+border-radius:10px;
+text-align:center;
+font-weight:bold;
+border:1px solid #d1d5db;
+}
+
+.request-card{
+background:white;
+padding:20px;
+margin-top:15px;
+border-radius:12px;
+border:1px solid #d1d5db;
+}
+
+button{
+padding:8px 12px;
+border:none;
+border-radius:6px;
+background:#16a34a;
+color:white;
+cursor:pointer;
+}
+
+.status-pending{color:#f59e0b;font-weight:bold;}
+.status-progress{color:#3b82f6;font-weight:bold;}
+.status-completed{color:#10b981;font-weight:bold;}
+</style>
+
+</head>
+
+<body>
+
+<div class="main">
+
+<div class="sidebar">
+<h2>🚑 Responder Panel</h2>
+
+<button onclick="loadRequests()">Dashboard</button>
+<button onclick="openTasks()">My Assigned Tasks</button>
+<button onclick="logout()">Logout</button>
+</div>
+
+<div class="content">
+
+<h2>🚑 My Assigned Tasks</h2>
+
+<div style="display:flex; gap:15px; margin-bottom:20px;">
+<div class="stat-box">Total: <span id="total">0</span></div>
+<div class="stat-box">Pending: <span id="pending">0</span></div>
+<div class="stat-box">Completed: <span id="completed">0</span></div>
+</div>
+
+<div style="width:220px; height:220px; margin:20px auto;">
+<canvas id="statusChart"></canvas>
+</div>
+
+<button onclick="loadRequests()">Refresh</button>
+
+<div id="requests"></div>
+
+</div>
+
+</div>
+
+<script>
+
+/* ================= CONFIG ================= */
+
+const BASE_URL = "http://localhost:9595/api/tasks/responder";
+const ACK_URL = "http://localhost:9595/api/acknowledgements";
+
+/* ================= AUTH ================= */
+
+const token = localStorage.getItem("token");
+const role = localStorage.getItem("role");
+const responderId = localStorage.getItem("userId");
+
+if(!token || role !== "RESPONDER" || !responderId){
+alert("❌ Please login again");
+window.location.href="login.html";
+}
+
+/* ================= GLOBAL ================= */
+
+let allRequests = [];
+let chartInstance = null;
+
+/* ================= LOAD TASKS ================= */
+
+function loadRequests(){
+
+fetch(BASE_URL + "/" + responderId,{
+headers:{
+"Authorization":"Bearer " + token
+}
+})
+.then(res=>{
+if(!res.ok){
+alert("❌ API Error");
+return [];
+}
+return res.json();
+})
+.then(data=>{
+
+console.log("API DATA:", data);
+
+allRequests = data || [];
+
+let total = allRequests.length;
+
+let pending = allRequests.filter(r => r.status === "PENDING").length;
+let completed = allRequests.filter(r => r.status === "COMPLETED").length;
+let progress = allRequests.filter(r => r.status === "IN_PROGRESS").length;
+
+document.getElementById("total").innerText = total;
+document.getElementById("pending").innerText = pending;
+document.getElementById("completed").innerText = completed;
+
+createChart(pending, progress, completed);
+
+displayRequests(allRequests);
+
+})
+.catch(err=>{
+console.error(err);
+alert("❌ Failed to load tasks");
+});
+
+}
+
+/* ================= CHART ================= */
+
+function createChart(pending, progress, completed){
+
+const ctx = document.getElementById("statusChart");
+
+if(chartInstance){
+chartInstance.destroy();
+}
+
+chartInstance = new Chart(ctx,{
+type:'doughnut',
+data:{
+labels:['Pending','In Progress','Completed'],
+datasets:[{
+data:[pending, progress, completed],
+backgroundColor:['#f59e0b','#3b82f6','#10b981']
+}]
+}
+});
+
+}
+
+/* ================= DISPLAY ================= */
+
+function displayRequests(data){
+
+const container = document.getElementById("requests");
+container.innerHTML = "";
+
+if(!data || data.length === 0){
+container.innerHTML = "<p>No assigned tasks</p>";
+return;
+}
+
+data.forEach(req => {
+
+let statusClass = "";
+
+if(req.status === "PENDING") statusClass = "status-pending";
+if(req.status === "IN_PROGRESS") statusClass = "status-progress";
+if(req.status === "COMPLETED") statusClass = "status-completed";
+
+container.innerHTML += `
+<div class="request-card">
+
+<h3>📍 ${req.location || "N/A"}</h3>
+
+<p><b>Description:</b> ${req.description || "No description"}</p>
+
+<p><b>Report:</b> ${req.report ? req.report : "No report yet"}</p>
+
+<!-- 🌍 MAP LINK -->
+<a target="_blank"
+href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(req.location)}">
+📍 Open in Google Maps
+</a>
+
+<br><br>
+
+<b>Status:</b>
+<span class="${statusClass}">
+${req.status}
+</span>
+
+<br><br>
+
+<select id="status-${req.id}">
+<option ${req.status==="PENDING"?"selected":""}>PENDING</option>
+<option ${req.status==="IN_PROGRESS"?"selected":""}>IN_PROGRESS</option>
+<option ${req.status==="COMPLETED"?"selected":""}>COMPLETED</option>
+</select>
+
+<button onclick="updateStatus(${req.id})">Update</button>
+
+<button onclick="sendAcknowledgement(${req.id})">Acknowledge</button>
+
+</div>
+`;
+
+});
+
+}
+
+/* ================= UPDATE STATUS ================= */
+
+function updateStatus(id){
+
+const status = document.getElementById("status-" + id).value;
+
+fetch("http://localhost:9595/api/tasks/" + id,{
+method:"PUT",
+headers:{
+"Content-Type":"application/json",
+"Authorization":"Bearer " + token
+},
+body: JSON.stringify({status: status})
+})
+.then(res=>{
+if(!res.ok) throw new Error();
+alert("✅ Status Updated");
+loadRequests();
+})
+.catch(()=>{
+alert("❌ Update failed");
+});
+
+}
+
+/* ================= ACK ================= */
+
+function sendAcknowledgement(taskId){
+
+fetch(`http://localhost:9595/api/ack/assign?alertId=${taskId}&responderId=${responderId}`,{
+method:"GET"
+})
+.then(res=>{
+if(!res.ok) throw new Error();
+return res.json();
+})
+.then(()=>{
+alert("✅ Acknowledged");
+})
+.catch(()=>{
+alert("❌ Failed to acknowledge");
+});
+
+}
+
+/* ================= NAV ================= */
+
+function openTasks(){
+window.location.href="responder_tasks.html";
+}
+
+function logout(){
+localStorage.clear();
+window.location.href="login.html";
+}
+
+/* ================= AUTO REFRESH ================= */
+
+// refresh every 5 seconds
+setInterval(loadRequests, 5000);
+
+/* ================= INIT ================= */
+
+loadRequests();
+
+</script>
+
+</body>
+</html>

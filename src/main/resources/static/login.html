@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Disaster Management - Authentication</title>
+
+<style>
+body{
+    margin:0;
+    font-family: Arial, sans-serif;
+    height:100vh;
+}
+
+.main{
+    display:flex;
+    height:100vh;
+}
+
+/* LEFT PANEL */
+.left-panel{
+    width:60%;
+    background: linear-gradient(rgba(0,0,0,0.5),rgba(0,0,0,0.5)),
+    url("https://images.unsplash.com/photo-1605902711622-cfb43c44367f") no-repeat center/cover;
+    color:white;
+    padding:40px;
+}
+
+.left-panel h1{
+    font-size:38px;
+    margin-bottom:5px;
+}
+
+.left-panel p{
+    margin-bottom:25px;
+}
+
+.cards{
+    display:flex;
+    gap:15px;
+    margin-bottom:25px;
+}
+
+.card{
+    background: rgba(255,255,255,0.9);
+    color:#1f2937;
+    padding:15px;
+    border-radius:10px;
+    width:150px;
+    text-align:center;
+    font-size:14px;
+}
+
+.card span{
+    display:block;
+    font-size:22px;
+    margin-bottom:5px;
+}
+
+.alert-btn{
+    background:#22c55e;
+    color:white;
+    padding:12px 25px;
+    border:none;
+    border-radius:6px;
+    font-weight:bold;
+    cursor:pointer;
+}
+
+.alert-btn:hover{
+    background:#16a34a;
+}
+
+/* RIGHT PANEL */
+.right-panel{
+    width:40%;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    background:#f3fdf6;
+}
+
+.container{
+    width:360px;
+    background:white;
+    padding:25px;
+    border-radius:15px;
+    box-shadow:0 5px 20px rgba(0,0,0,0.15);
+}
+
+h2{
+    text-align:center;
+    color:#22c55e;
+}
+
+.subtitle{
+    text-align:center;
+    color:#22c55e;
+    font-size:14px;
+    margin-bottom:15px;
+}
+
+.tabs{
+    display:flex;
+    justify-content:center;
+    gap:30px;
+    margin-bottom:20px;
+}
+
+.tabs span{
+    cursor:pointer;
+    padding-bottom:5px;
+    font-weight:bold;
+    color:#333;
+}
+
+.tabs .active{
+    color:#22c55e;
+    border-bottom:2px solid #22c55e;
+}
+
+label{
+    font-size:13px;
+    color:#374151;
+}
+
+input{
+    width:100%;
+    padding:10px;
+    margin:6px 0 12px 0;
+    border-radius:6px;
+    border:1px solid #bbf7d0;
+}
+
+input:focus{
+    outline:none;
+    border-color:#22c55e;
+    box-shadow:0 0 5px rgba(34,197,94,0.3);
+}
+
+button{
+    width:100%;
+    padding:10px;
+    margin-top:10px;
+    background:#22c55e;
+    border:none;
+    border-radius:6px;
+    color:white;
+    font-weight:bold;
+    cursor:pointer;
+}
+
+button:hover{
+    background:#16a34a;
+}
+
+.forgot{
+    text-align:right;
+    color:#22c55e;
+    cursor:pointer;
+    font-size:13px;
+}
+
+.roles{
+    display:flex;
+    justify-content:space-between;
+    margin-top:10px;
+}
+
+hr{
+    margin:15px 0;
+    border:none;
+    height:1px;
+    background:#d1fae5;
+}
+</style>
+</head>
+
+<body>
+
+<div class="main">
+
+<!-- LEFT PANEL -->
+<div class="left-panel">
+    <h1>Disaster Management & Alert System</h1>
+    <p>Stay Prepared. Stay Safe.</p>
+
+    <div class="cards">
+        <div class="card"><span>🚨</span>Emergency Alerts</div>
+        <div class="card"><span>🌪</span>Weather Updates</div>
+        <div class="card"><span>🚑</span>Emergency Services</div>
+        <div class="card"><span>📍</span>Live Disaster Map</div>
+    </div>
+
+    <button class="alert-btn">Get Alerts & Updates</button>
+</div>
+
+<!-- RIGHT PANEL -->
+<div class="right-panel">
+<div class="container">
+
+<h2>User Authentication</h2>
+<p class="subtitle">Disaster Management & Alert System</p>
+
+<div class="tabs">
+    <span id="loginTab" class="active" onclick="showLogin()">Login</span>
+    <span id="registerTab" onclick="showRegister()">Register</span>
+</div>
+
+<!-- LOGIN FORM -->
+<div id="loginForm">
+
+    <label>Email Address</label>
+    <input id="loginEmail" type="email" placeholder="Enter your email address">
+
+    <label>Password</label>
+    <input id="loginPassword" type="password" placeholder="Enter your password">
+
+    <p onclick="goReset()" class="forgot">Forgot Password?</p>
+
+    <button onclick="loginUser()">Login</button>
+
+    <div style="text-align:center; margin-top:15px;">
+        <p>Don't have an account?</p>
+        <a href="#" onclick="showRegister()" style="
+            color:#16a34a;
+            font-weight:bold;
+            text-decoration:none;
+        ">
+            Register Here
+        </a>
+    </div>
+</div>
+
+<hr>
+
+<!-- REGISTER FORM -->
+<div id="registerForm" style="display:none;">
+
+    <label>Full Name</label>
+    <input id="name" type="text" placeholder="Enter your full name">
+
+    <label>Email Address</label>
+    <input id="emailRegister" type="email" placeholder="Enter your email address">
+
+    <label>Password</label>
+    <input id="passwordRegister" type="password" placeholder="Create a password">
+
+    <label>Phone Number</label>
+    <input id="phone" type="text" placeholder="Enter your phone number">
+
+    <label>Location</label>
+    <input id="location" type="text" placeholder="Enter your city or area">
+
+    <label>User Role</label>
+    <div class="roles">
+        <label><input type="radio" name="role" value="ADMIN"> Admin</label>
+        <label><input type="radio" name="role" value="RESPONDER"> Responder</label>
+        <label><input type="radio" name="role" value="CITIZEN" checked> Citizen</label>
+    </div>
+
+    <button onclick="registerUser()">Create Account</button>
+</div>
+
+</div>
+</div>
+
+</div>
+
+<!-- TAB + EXTRA FUNCTIONS -->
+<script>
+function showLogin(){
+    document.getElementById("loginForm").style.display = "block";
+    document.getElementById("registerForm").style.display = "none";
+    document.getElementById("loginTab").classList.add("active");
+    document.getElementById("registerTab").classList.remove("active");
+}
+
+function showRegister(){
+    document.getElementById("loginForm").style.display = "none";
+    document.getElementById("registerForm").style.display = "block";
+    document.getElementById("registerTab").classList.add("active");
+    document.getElementById("loginTab").classList.remove("active");
+}
+
+function goReset(){
+    alert("Password reset feature coming soon");
+}
+</script>
+
+<!-- BACKEND JS -->
+<script src="js/app.js"></script>
+
+</body>
+</html>

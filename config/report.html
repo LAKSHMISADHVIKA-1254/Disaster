@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Create Report</title>
+
+    <style>
+        body{
+            font-family: Arial;
+            background:#0b1c17;
+            color:white;
+            text-align:center;
+            padding-top:50px;
+        }
+
+        .card{
+            background:#102a23;
+            padding:30px;
+            width:400px;
+            margin:auto;
+            border-radius:10px;
+        }
+
+        input,textarea{
+            width:90%;
+            padding:10px;
+            margin:10px;
+            border-radius:6px;
+            border:none;
+        }
+
+        button{
+            padding:10px 20px;
+            background:#2ecc71;
+            border:none;
+            border-radius:6px;
+            cursor:pointer;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="card">
+    <h2>Create Disaster Report</h2>
+
+    <input id="title" placeholder="Title"><br>
+    <textarea id="description" placeholder="Description"></textarea><br>
+    <input id="location" placeholder="Location"><br>
+
+    <button onclick="submitReport()">Submit Report</button>
+</div>
+
+<script>
+
+function submitReport(){
+
+    const reportData = {
+        title: document.getElementById("title").value,
+        description: document.getElementById("description").value,
+        location: document.getElementById("location").value
+    };
+
+    fetch("http://localhost:9595/report/add",{
+        method:"POST",
+        headers:{
+            "Content-Type":"application/json"
+        },
+        body: JSON.stringify(reportData)
+    })
+    .then(res=>res.json())
+    .then(data=>{
+        alert("✅ Report Submitted Successfully");
+        window.location.href="dashboard.html";
+    })
+    .catch(err=>{
+        alert("Error submitting report");
+        console.log(err);
+    });
+}
+
+</script>
+
+</body>
+</html>

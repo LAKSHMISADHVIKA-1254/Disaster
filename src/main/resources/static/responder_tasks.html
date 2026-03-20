@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Responder Tasks</title>
+
+<style>
+body{
+    font-family:Segoe UI,Arial;
+    background:#ecfeff;
+    padding:30px;
+}
+.container{
+    width:950px;
+    margin:auto;
+    background:white;
+    padding:25px;
+    border-radius:12px;
+}
+table{
+    width:100%;
+    border-collapse:collapse;
+}
+th,td{
+    padding:10px;
+    border:1px solid #ddd;
+    text-align:center;
+}
+th{
+    background:#0284c7;
+    color:white;
+}
+textarea{
+    width:90%;
+    height:60px;
+}
+button{
+    padding:6px 12px;
+    border:none;
+    background:#0f172a;
+    color:white;
+    border-radius:5px;
+    cursor:pointer;
+}
+button:hover{
+    background:#1e293b;
+}
+.map-link{
+    color:#2563eb;
+    font-size:13px;
+    display:block;
+    margin-top:5px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+<h2>🚑 My Assigned Tasks</h2>
+
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Location</th>
+<th>Description</th>
+<th>Status</th>
+<th>Map</th>
+<th>Report</th>
+<th>Submit</th>
+</tr>
+</thead>
+
+<tbody id="taskTable"></tbody>
+</table>
+
+<br>
+<button onclick="goBack()" style="background:#374151;">Back</button>
+<button onclick="logout()" style="background:#374151;">Logout</button>
+
+</div>
+
+<script>
+
+const token = localStorage.getItem("token");
+const role = localStorage.getItem("role");
+const responderId = localStorage.getItem("userId");
+
+/* 🔐 AUTH CHECK */
+if(!token || role !== "RESPONDER"){
+ alert("Access Denied");
+ window.location.href="login.html";
+}
+
+/* 📥 LOAD TASKS */
+function loadTasks(){
+
+fetch(`http://localhost:9595/api/tasks/responder/${responderId}`,{
+    headers:{
+        "Authorization":"Bearer " + token
+    }
+})
+.then(res=>{
+    if(res.status === 403){
+        throw new Error("Unauthorized (403)");
+    }
+    if(!res.ok){
+        throw new Error("Failed to fetch tasks");
+    }
+    return res.json();
+})
+.then(data=>{
+
+    const table=document.getElementById("taskTable");
+    table.innerHTML="";
+
+    if(!data || data.length===0){
+        table.innerHTML=`<tr>
+        <td colspan="7">No tasks assigned</td>
+        </tr>`;
+        return;
+    }
+
+    data.forEach(t=>{
+
+        let statusColor =
+        t.status === "COMPLETED" ? "green" :
+        t.status === "IN_PROGRESS" ? "orange" : "gray";
+
+        table.innerHTML+=`
+        <tr>
+            <td>${t.id}</td>
+
+            <td>
+                ${t.location}
+                <a class="map-link" target="_blank"
+                href="https://www.google.com/maps/search/?api=1&query=${t.location}">
+                📍 Open Map
+                </a>
+            </td>
+
+            <td>${t.description}</td>
+
+            <td style="color:${statusColor}; font-weight:bold;">
+                ${t.status}
+            </td>
+
+            <td>
+                <a target="_blank"
+                href="https://www.google.com/maps/search/?api=1&query=${t.location}">
+                View
+                </a>
+            </td>
+
+            <td>
+                <textarea id="report${t.id}" placeholder="Enter report..."></textarea>
+            </td>
+
+            <td>
+                <button onclick="submitReport(${t.id})">Send</button>
+            </td>
+        </tr>
+        `;
+    });
+
+})
+.catch(err=>{
+    console.error("ERROR:",err);
+    alert("❌ Failed to load tasks");
+});
+}
+
+/* 📤 SUBMIT REPORT (FIXED API) */
+function submitReport(taskId){
+
+let msg = document.getElementById("report"+taskId).value;
+
+/* VALIDATION */
+if(!msg || msg.trim()===""){
+    alert("Please enter report before submitting");
+    return;
+}
+
+/* ✅ CORRECT API URL */
+fetch(`http://localhost:9595/api/tasks/report/${taskId}?report=${encodeURIComponent(msg)}`,{
+method:"PUT",
+headers:{
+    "Authorization":"Bearer "+token
+}
+})
+.then(res=>{
+    if(!res.ok){
+        throw new Error("Submit failed");
+    }
+    return res.json();
+})
+.then(()=>{
+    alert("✅ Report Submitted Successfully");
+    loadTasks();
+})
+.catch(err=>{
+    console.error(err);
+    alert("❌ Report submission failed");
+});
+}
+
+/* 🔙 NAVIGATION */
+function goBack(){
+    window.location.href="responder.html";
+}
+
+function logout(){
+    localStorage.clear();
+    window.location.href="login.html";
+}
+
+/* 🚀 INIT */
+loadTasks();
+
+</script>
+
+</body>
+</html>
