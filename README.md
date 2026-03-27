@@ -25,7 +25,7 @@ The application helps manage disaster-related data, reports, and administrative 
 ## ▶️ How to Run
 1. Import project into Eclipse
 2. Run as Spring Boot Application
-3. Open browser: http://localhost:9595
+3. Open browser: http://localhost:9595/login.html
 
 ## 👩‍💻 Author
 CHEBROLU LAKSHMI SADHVIKA
